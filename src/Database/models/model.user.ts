@@ -15,19 +15,21 @@ export class User extends Model {
 
   @Column({
     type: DataType.STRING,
+    //must be filled
     allowNull: false,
   })
   declare username: string;
 
   @Column({
     type: DataType.STRING,
+    //must be filled
     allowNull: false,
   })
   declare password: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: false,
+    unique: true,
   })
   declare email: string;
 
