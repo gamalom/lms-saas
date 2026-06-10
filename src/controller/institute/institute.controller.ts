@@ -120,6 +120,9 @@ const createTeacherTable = async (
         teacherName VARCHAR(255) NOT NULL,
         teacherEmail VARCHAR(255) NOT NULL UNIQUE,
         teacherPhoneNumber VARCHAR(255) NOT NULL UNIQUE,
+        teacherExpertise VARCHAR(255),
+        joiningDate DATE,
+        salary VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
@@ -147,6 +150,9 @@ const createStudentTable = async (
         studentName VARCHAR(255) NOT NULL,
         studentEmail VARCHAR(255) NOT NULL UNIQUE,
         studentPhoneNumber VARCHAR(255) NOT NULL UNIQUE,
+        studentAddress VARCHAR(255) NOT NULL,
+        enrollmentDate DATE,
+        studentImage VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
@@ -171,10 +177,12 @@ const createCourseTable = async (
   await sequelize.query(
     `CREATE TABLE IF NOT EXISTS course_${instituteNumber}(
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        courseName VARCHAR(255) NOT NULL,
-        courseDescription VARCHAR(255) NOT NULL,
+        courseName VARCHAR(255) NOT NULL, 
+        courseThumbnail VARCHAR(255),
         courseDuration VARCHAR(255) NOT NULL,
-        courseFee VARCHAR(255) NOT NULL,
+        courseDescription TEXT NOT NULL,
+        coursePrice VARCHAR(255) NOT NULL,
+        courseLevel ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
