@@ -14,7 +14,17 @@ import isLoggedIn from "../../middlewate/middleware";
 
 import multer from "multer";
 import { cloudinary, storage } from "../../services/cloudinary";
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const allowFileTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (allowFileTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images are allowed"));
+    }
+  },
+});
 
 const router = express.Router();
 router

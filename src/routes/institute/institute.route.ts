@@ -4,6 +4,7 @@ import {
   createTeacherTable,
   createStudentTable,
   createCourseTable,
+  catagoryTable,
 } from "../../controller/institute/institute.controller";
 
 import isLoggedIn from "../../middlewate/middleware";
@@ -18,6 +19,7 @@ router
     asyncErrorHandler(createInstitute),
     asyncErrorHandler(createTeacherTable),
     asyncErrorHandler(createStudentTable),
+    asyncErrorHandler(catagoryTable),
     asyncErrorHandler(createCourseTable),
   );
 

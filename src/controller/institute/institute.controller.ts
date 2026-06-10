@@ -162,6 +162,25 @@ const createStudentTable = async (
   next();
 };
 
+const catagoryTable = async (
+  req: IExtendedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const instituteNumber = req.user?.instituteId;
+  await sequelize.query(
+    `CREATE TABLE IF NOT EXISTS catagory_${instituteNumber}(
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        catagoryName VARCHAR(255) NOT NULL,
+        catagoryDescription TEXT NOT NULL,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+  );
+  console.log("Catagory table created successfully");
+  next();
+};
+
 const createCourseTable = async (
   req: IExtendedRequest,
   res: Response,
@@ -199,4 +218,5 @@ export {
   createTeacherTable,
   createStudentTable,
   createCourseTable,
+  catagoryTable,
 };
