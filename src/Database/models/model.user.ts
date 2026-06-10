@@ -38,6 +38,11 @@ export class User extends Model {
     defaultValue: "student",
   })
   declare role: string;
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  declare instituteId: string;
 }
 
 export default User;

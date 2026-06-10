@@ -1,37 +1,36 @@
-# SaaS LMS — Server Notes
+# SaaS LMS — Server
 
-Development log of everything built so far (before pushing to git).
+Node.js + Express + TypeScript backend for the SaaS LMS. Uses Sequelize with MySQL, JWT auth, and a per-institute multi-tenant table strategy.
 
 ---
 
 ## 1. Project setup
 
-- Initialized a **Node.js + Express + TypeScript** backend inside `server/`.
-- Installed core packages:
+- **Stack:** Node.js, Express 5, TypeScript, Sequelize-TypeScript, MySQL
+- **Entry point:** `server.ts` — starts Express and connects to the database
+- **Dev:** `nodemon` + `ts-node` via `npm start`
+- **Key packages:**
   - `express` — HTTP server
   - `dotenv` — load env variables from `.env`
-  - `nodemon` + `ts-node` — run TypeScript in dev (`npm start`)
   - `sequelize-typescript` + `mysql2` — ORM + MySQL driver
   - `bcrypt` — password hashing
   - `jsonwebtoken` — JWT auth tokens
-- Added `tsconfig.json` with `strict: true`, decorators enabled for Sequelize models.
-- Entry point: `server.ts` — starts Express app and connects to the database.
+
+`tsconfig.json` uses `strict: true` with decorators enabled for Sequelize models.
 
 ---
 
 ## 2. Environment variables (`.env`)
 
-Created `.env` with:
-
-| Variable     | Purpose              |
-| ------------ | -------------------- |
-| `PORT`       | Server port (3000)   |
-| `DB_NAME`    | MySQL database name  |
-| `DB_USER`    | MySQL username       |
-| `DB_PASSWORD`| MySQL password       |
-| `DB_HOST`    | MySQL host           |
-| `DB_PORT`    | MySQL port (3306)    |
-| `JWT_SECRET` | Secret key for JWT   |
+| Variable      | Purpose              |
+| ------------- | -------------------- |
+| `PORT`        | Server port (e.g. 3000) |
+| `DB_NAME`     | MySQL database name  |
+| `DB_USER`     | MySQL username       |
+| `DB_PASSWORD` | MySQL password       |
+| `DB_HOST`     | MySQL host           |
+| `DB_PORT`     | MySQL port (3306)    |
+| `JWT_SECRET`  | Secret key for JWT   |
 
 > Do not commit `.env` to git. Keep secrets local only.
 
@@ -41,11 +40,11 @@ Created `.env` with:
 
 **File:** `src/Database/connection.ts`
 
-- Set up **Sequelize** with MySQL using values from `.env`.
-- Auto-loads models from `src/Database/models/`.
+- Sequelize instance configured from `.env`
+- Auto-loads models from `src/Database/models/`
 - In `server.ts`:
   - `sequelize.authenticate()` — test DB connection
-  - `sequelize.sync({ alter: false })` — sync models to DB tables
+  - `sequelize.sync({ alter: true })` — sync models to DB tables
 
 ---
 
@@ -53,16 +52,15 @@ Created `.env` with:
 
 **File:** `src/Database/models/model.user.ts`
 
-Created the `users` table via Sequelize model:
-
-| Field      | Type                                              |
-| ---------- | ------------------------------------------------- |
-| `id`       | UUID (primary key, auto-generated)                |
-| `username` | string (required)                                 |
-| `password` | string (required, stored hashed)                  |
-| `email`    | string (unique)                                   |
-| `role`     | enum: `super-admin`, `teacher`, `student`, `institute` (default: `student`) |
-| timestamps | `createdAt`, `updatedAt`                          |
+| Field         | Type                                              |
+| ------------- | ------------------------------------------------- |
+| `id`          | UUID (primary key, auto-generated)                |
+| `username`    | string (required)                                 |
+| `password`    | string (required, stored hashed)                  |
+| `email`       | string (unique)                                   |
+| `role`        | enum: `super-admin`, `teacher`, `student`, `institute` (default: `student`) |
+| `instituteId` | string (nullable) — set when user creates an institute |
+| timestamps    | `createdAt`, `updatedAt`                          |
 
 ---
 
@@ -70,10 +68,12 @@ Created the `users` table via Sequelize model:
 
 **File:** `src/app.ts`
 
-- `express.json()` and `express.urlencoded()` middleware for parsing request bodies.
-- Mounted routes under `/api`:
-  - Auth routes → `src/routes/globals/auth/auth.route.ts`
-  - Institute routes → `src/routes/institute/institute.route.ts`
+- `express.json()` and `express.urlencoded()` for request body parsing
+- Routes mounted under `/api`:
+  - Auth → `src/routes/globals/auth/auth.route.ts`
+  - Institute → `src/routes/institute/institute.route.ts`
+
+All async route handlers are wrapped with `asyncErrorHandler` (see section 9).
 
 ---
 
@@ -85,18 +85,20 @@ Created the `users` table via Sequelize model:
 
 ### `POST /api/register`
 
-- Body: `username`, `password`, `email` (all required).
-- Hashes password with **bcrypt** (`hashSync`, salt rounds: 10).
-- Creates user in `users` table.
-- Returns `201` with created user.
+- **Body:** `username`, `password`, `email` (all required)
+- Returns `400` if any field is missing
+- Hashes password with **bcrypt** (`hashSync`, salt rounds: 10)
+- Creates user in `users` table
+- Returns `201` with created user
 
 ### `POST /api/login`
 
-- Body: `email`, `password` (both required).
-- Finds user by email.
-- Compares password with **bcrypt** `compareSync`.
-- On success, signs a **JWT** with `{ id: user.id }`, expires in **30 days**.
-- Returns `200` with `token`.
+- **Body:** `email`, `password` (both required)
+- Returns `400` if fields are missing
+- Returns `404` if user not found
+- Returns `401` if password is invalid
+- On success, signs a **JWT** with `{ id: user.id }`, expires in **30 days**
+- Returns `200` with `token`
 
 ### Not yet implemented (planned)
 
@@ -114,15 +116,44 @@ Created the `users` table via Sequelize model:
 
 ### `POST /api/institute` (requires login)
 
-- Protected by `isLoggedIn` middleware.
-- Body (required): `instituteName`, `instituteAddress`, `institutePhoneNumber`, `instituteEmail`
-- Body (optional): `instituteVatNumber`, `institutePanNumber`
-- Generates a random 6-digit `instituteNumber`.
-- Creates a **new MySQL table** per institute: `institute_<number>` with columns for name, address, phone, email, VAT, PAN, and timestamps.
-- Inserts the institute record into that table.
-- Returns `200` with `instituteNumber`.
+Protected by `isLoggedIn`. Runs a **middleware chain** that provisions all institute tables in one request:
 
-> Each institute gets its own table — multi-tenant style, one table per institute.
+| Step | Handler              | What it does |
+| ---- | -------------------- | ------------ |
+| 1    | `createInstitute`    | Creates institute table, links user, updates role |
+| 2    | `createTeacherTable` | Creates `teacher_<number>` table |
+| 3    | `createStudentTable` | Creates `student_<number>` table |
+| 4    | `createCourseTable`  | Creates `course_<number>` table, sends response |
+
+**Request body (required):** `instituteName`, `instituteAddress`, `institutePhoneNumber`, `instituteEmail`
+
+**Request body (optional):** `instituteVatNumber`, `institutePanNumber`
+
+**Step 1 — `createInstitute`:**
+
+- Returns `400` if required fields are missing
+- Generates a random 6-digit `instituteNumber`
+- Creates table `institute_<number>` with institute details (phone and email are unique)
+- Inserts the institute record
+- Creates shared `user_institute` table (if not exists) linking `userId` → `instituteId`
+- Inserts the current user's ID and institute number into `user_institute`
+- Updates the user's `role` to `institute` and sets `instituteId` to the new institute number
+- Passes `instituteNumber` to the next middleware via `req.instituteNumber`
+
+**Step 2 — `createTeacherTable`:**
+
+- Creates `teacher_<number>` with: `teacherName`, `teacherEmail`, `teacherPhoneNumber`
+
+**Step 3 — `createStudentTable`:**
+
+- Creates `student_<number>` with: `studentName`, `studentEmail`, `studentPhoneNumber`
+
+**Step 4 — `createCourseTable`:**
+
+- Creates `course_<number>` with: `courseName`, `courseDescription`, `courseDuration`, `courseFee`
+- Returns `200` with `instituteNumber`
+
+> Multi-tenant design: each institute gets its own set of tables (`institute_*`, `teacher_*`, `student_*`, `course_*`), plus a shared `user_institute` mapping table.
 
 ---
 
@@ -130,54 +161,63 @@ Created the `users` table via Sequelize model:
 
 **File:** `src/middlewate/middleware.ts`
 
-Steps the middleware performs:
-
-1. Reads `Authorization` header — returns `401` if missing.
-2. Verifies JWT with `jwt.verify` using `JWT_SECRET`.
-3. On invalid/expired token → `401`.
-4. Looks up user in DB via `User.findByPk(decoded.id)`.
-5. If user not found → `401`.
-6. Attaches user to `req.user` and calls `next()`.
+1. Reads `Authorization` header — returns `401` if missing
+2. Verifies JWT with `jwt.verify` using `JWT_SECRET`
+3. On invalid/expired token → `401`
+4. Looks up user in DB via `User.findByPk(decoded.id)`
+5. If user not found → `401`
+6. Attaches user to `req.user` and calls `next()`
 
 Used on: `POST /api/institute`
 
 ---
 
-## 9. TypeScript — extend Express `Request`
+## 9. Async error handling
 
-**File:** `src/types/express.d.ts`
+**File:** `src/services/async.error.handling.ts`
 
-- Express `Request` does not have `user` by default.
-- Added module augmentation so `req.user` is typed as `User | undefined` across the project.
-- Also added local `IExtendedRequest` interface in middleware as an extra type hint.
+Higher-order function that wraps async route/middleware handlers and catches rejected promises. On error, returns `500` with `message` and `fullError`.
+
+Used on all auth and institute route handlers.
 
 ---
 
-## 10. Project structure (current)
+## 10. TypeScript — extend Express `Request`
+
+**File:** `src/types/express.d.ts`
+
+- Module augmentation adds `user?: User` to Express `Request`
+- Institute controllers also use a local `IExtendedRequest` with `instituteNumber?: number` for the middleware chain
+
+---
+
+## 11. Project structure
 
 ```
 server/
-├── server.ts                          # Entry point
+├── server.ts                              # Entry point
 ├── src/
-│   ├── app.ts                         # Express app + route mounting
+│   ├── app.ts                             # Express app + route mounting
 │   ├── Database/
-│   │   ├── connection.ts              # Sequelize MySQL connection
+│   │   ├── connection.ts                  # Sequelize MySQL connection
 │   │   └── models/
-│   │       └── model.user.ts          # User model
+│   │       └── model.user.ts              # User model
 │   ├── controller/
 │   │   ├── globals/auth/
-│   │   │   └── auth.controller.ts     # register, login
+│   │   │   └── auth.controller.ts         # register, login
 │   │   └── institute/
-│   │       └── institute.controller.ts # create institute
+│   │       └── institute.controller.ts    # institute + tenant tables
 │   ├── middlewate/
-│   │   └── middleware.ts              # isLoggedIn JWT middleware
+│   │   └── middleware.ts                  # isLoggedIn JWT middleware
 │   ├── routes/
 │   │   ├── globals/auth/
 │   │   │   └── auth.route.ts
 │   │   └── institute/
 │   │       └── institute.route.ts
+│   ├── services/
+│   │   └── async.error.handling.ts        # async try/catch wrapper
 │   └── types/
-│       └── express.d.ts               # req.user type extension
+│       └── express.d.ts                   # req.user type extension
 ├── package.json
 ├── tsconfig.json
 └── .env
@@ -185,7 +225,7 @@ server/
 
 ---
 
-## 11. How to run
+## 12. How to run
 
 ```bash
 cd server
@@ -198,22 +238,41 @@ Server runs on `http://localhost:3000` (or whatever `PORT` is set to).
 
 ---
 
-## 12. Git commits so far
-
-| Commit   | What was added                              |
-| -------- | ------------------------------------------- |
-| `first commit` | Project scaffold, DB, User model, auth routes |
-| `upto bcrypt` | bcrypt hashing in register/login            |
-| `upto create institute` | Institute controller + route          |
-| `islogged in middleware` | JWT middleware, protect institute route, Express types |
-
----
-
 ## 13. Quick API test flow
 
 1. **Register** → `POST /api/register`
+   ```json
+   { "username": "admin", "password": "secret", "email": "admin@example.com" }
+   ```
+
 2. **Login** → `POST /api/login` → copy the `token`
+   ```json
+   { "email": "admin@example.com", "password": "secret" }
+   ```
+
 3. **Create institute** → `POST /api/institute` with header:
    ```
    Authorization: <token>
    ```
+   ```json
+   {
+     "instituteName": "Acme Academy",
+     "instituteAddress": "123 Main St",
+     "institutePhoneNumber": "+1234567890",
+     "instituteEmail": "info@acme.edu"
+   }
+   ```
+
+   Response includes `instituteNumber`. The user's role is updated to `institute` and all tenant tables are created automatically.
+
+---
+
+## 14. Git history
+
+| Commit                    | What was added |
+| ------------------------- | -------------- |
+| `first commit`            | Project scaffold, DB, User model, auth routes |
+| `upto bcrypt`             | bcrypt hashing in register/login |
+| `upto create institute`   | Institute controller + route |
+| `islogged in middleware`  | JWT middleware, protect institute route, Express types |
+| `readme`                  | Server documentation |
