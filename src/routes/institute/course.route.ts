@@ -8,11 +8,35 @@ import {
   updateCourse,
 } from "../../controller/institute/course/course.controller";
 
+import isLoggedIn from "../../middlewate/middleware";
+// import { multer, storage } from "../../middlewate/middleware.multer";
+// const upload = multer({ storage: storage });
+
+import multer from "multer";
+import { cloudinary, storage } from "../../services/cloudinary";
+const upload = multer({ storage: storage });
+
 const router = express.Router();
-router.route("/course").post(asyncErrorHandler(createCourse));
-router.route("/course/:courseId").delete(asyncErrorHandler(deleteCourse));
-router.route("/course/:courseId").get(asyncErrorHandler(getSingleCourse));
-router.route("/course").get(asyncErrorHandler(getAllCourses));
-router.route("/course/:courseId").put(asyncErrorHandler(updateCourse));
+router
+  .route("/course")
+  .post(
+    isLoggedIn,
+    upload.single("courseThumbnail"),
+    asyncErrorHandler(createCourse),
+  );
+router
+  .route("/course/:courseId")
+  .delete(isLoggedIn, asyncErrorHandler(deleteCourse));
+router
+  .route("/course/:courseId")
+  .get(isLoggedIn, asyncErrorHandler(getSingleCourse));
+router.route("/course").get(isLoggedIn, asyncErrorHandler(getAllCourses));
+router
+  .route("/course/:courseId")
+  .put(
+    isLoggedIn,
+    upload.single("courseThumbnail"),
+    asyncErrorHandler(updateCourse),
+  );
 
 export default router;

@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import sequelize from "../../../Database/connection";
+import User from "../../../Database/models/model.user";
+
 interface IExtendedRequest extends Request {
+  user?: User;
   instituteNumber?: number;
 }
 
@@ -10,8 +13,8 @@ const createTeacher = async (req: IExtendedRequest, res: Response) => {
     teacherEmail,
     teacherPhoneNumber,
     teacherAddress,
-    teacherImage,
   } = req.body;
+  const teacherImage = req.file?.filename;
   const instituteNumber = req.user?.instituteId;
   if (
     !teacherName ||
@@ -95,8 +98,8 @@ const updateTeacher = async (req: IExtendedRequest, res: Response) => {
     teacherEmail,
     teacherPhoneNumber,
     teacherAddress,
-    teacherImage,
   } = req.body;
+  const teacherImage = req.file?.filename ?? req.body.teacherImage;
   const instituteNumber = req.user?.instituteId;
   if (!instituteNumber) {
     return res.status(400).json({

@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import sequelize from "../../../Database/connection";
+import User from "../../../Database/models/model.user";
 
 interface IExtendedRequest extends Request {
+  user?: User;
   instituteNumber?: number;
 }
 
@@ -12,8 +14,8 @@ const createStudent = async (req: IExtendedRequest, res: Response) => {
     studentPhoneNumber,
     studentAddress,
     enrollmentDate,
-    studentImage,
   } = req.body;
+  const studentImage = req.file?.filename;
   const instituteNumber = req.user?.instituteId;
   if (
     !studentName ||
@@ -25,6 +27,12 @@ const createStudent = async (req: IExtendedRequest, res: Response) => {
   ) {
     return res.status(400).json({
       message: "All fields are required",
+    });
+  }
+
+  if (!instituteNumber) {
+    return res.status(400).json({
+      message: "Institute number is required",
     });
   }
   const student = await sequelize.query(
@@ -49,6 +57,11 @@ const createStudent = async (req: IExtendedRequest, res: Response) => {
 const deleteStudent = async (req: IExtendedRequest, res: Response) => {
   const { studentId } = req.params;
   const instituteNumber = req.user?.instituteId;
+  if (!instituteNumber) {
+    return res.status(400).json({
+      message: "Institute number is required",
+    });
+  }
   const student = await sequelize.query(
     `DELETE FROM student_${instituteNumber} WHERE id = ?`,
     {
@@ -67,6 +80,11 @@ const deleteStudent = async (req: IExtendedRequest, res: Response) => {
 
 const getAllStudents = async (req: IExtendedRequest, res: Response) => {
   const instituteNumber = req.user?.instituteId;
+  if (!instituteNumber) {
+    return res.status(400).json({
+      message: "Institute number is required",
+    });
+  }
   const students = await sequelize.query(
     `SELECT * FROM student_${instituteNumber}`,
   );
@@ -79,6 +97,11 @@ const getAllStudents = async (req: IExtendedRequest, res: Response) => {
 const getSingleStudent = async (req: IExtendedRequest, res: Response) => {
   const { studentId } = req.params;
   const instituteNumber = req.user?.instituteId;
+  if (!instituteNumber) {
+    return res.status(400).json({
+      message: "Institute number is required",
+    });
+  }
   const student = await sequelize.query(
     `SELECT * FROM student_${instituteNumber} WHERE id = ?`,
     {
@@ -98,17 +121,32 @@ const getSingleStudent = async (req: IExtendedRequest, res: Response) => {
 
 const updateStudent = async (req: IExtendedRequest, res: Response) => {
   const { studentId } = req.params;
-  const { studentName, studentEmail, studentPhoneNumber, studentAddress } =
-    req.body;
+  const {
+    studentName,
+    studentEmail,
+    studentPhoneNumber,
+    studentAddress,
+    enrollmentDate,
+  } = req.body;
+  const studentImage = req.file?.filename ?? req.body.studentImage;
   const instituteNumber = req.user?.instituteId;
+
+  if (!instituteNumber) {
+    return res.status(400).json({
+      message: "Institute number is required",
+    });
+  }
+
   const student = await sequelize.query(
-    `UPDATE student_${instituteNumber} SET studentName = ?, studentEmail = ?, studentPhoneNumber = ?, studentAddress = ? WHERE id = ?`,
+    `UPDATE student_${instituteNumber} SET studentName = ?, studentEmail = ?, studentPhoneNumber = ?, studentAddress = ?, enrollmentDate = ?, studentImage = ? WHERE id = ?`,
     {
       replacements: [
         studentName,
         studentEmail,
         studentPhoneNumber,
         studentAddress,
+        enrollmentDate,
+        studentImage,
         studentId,
       ],
     },
