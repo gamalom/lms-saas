@@ -13,9 +13,10 @@ import isLoggedIn from "../../middlewate/middleware";
 // const upload = multer({ storage: storage });
 
 import multer from "multer";
-import { cloudinary, storage } from "../../services/cloudinary";
+import { storage, uploadLimits } from "../../services/cloudinary";
 const upload = multer({
   storage: storage,
+  limits: uploadLimits,
   fileFilter: (req, file, cb) => {
     const allowFileTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (allowFileTypes.includes(file.mimetype)) {

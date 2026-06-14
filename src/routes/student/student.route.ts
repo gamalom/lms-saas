@@ -12,8 +12,8 @@ import isLoggedIn from "../../middlewate/middleware";
 // const upload = multer({ storage: storage });
 
 import multer from "multer";
-import { cloudinary, storage } from "../../services/cloudinary";
-const upload = multer({ storage: storage });
+import { storage, uploadLimits } from "../../services/cloudinary";
+const upload = multer({ storage: storage, limits: uploadLimits });
 
 const router = express.Router();
 

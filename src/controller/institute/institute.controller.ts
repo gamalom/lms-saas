@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import sequelize from "../../Database/connection";
 import User from "../../Database/models/model.user";
+import category from "../../services/seed";
 
 interface IExtendedRequest extends Request {
   user?: User;
@@ -177,6 +178,14 @@ const catagoryTable = async (
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )`,
   );
+  category.forEach(async (category) => {
+    await sequelize.query(
+      `INSERT INTO catagory_${instituteNumber} (catagoryName, catagoryDescription) VALUES (?, ?)`,
+      {
+        replacements: [category.catagoryName, category.catagoryDescription],
+      },
+    );
+  });
   console.log("Catagory table created successfully");
   next();
 };
@@ -192,20 +201,6 @@ const createCourseTable = async (
       message: "Institute number missing — course table was not created",
     });
   }
-
-  await sequelize.query(
-    `CREATE TABLE IF NOT EXISTS course_${instituteNumber}(
-        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        courseName VARCHAR(255) NOT NULL, 
-        courseThumbnail VARCHAR(255),
-        courseDuration VARCHAR(255) NOT NULL,
-        courseDescription TEXT NOT NULL,
-        coursePrice VARCHAR(255) NOT NULL,
-        courseLevel ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`,
-  );
 
   return res.status(200).json({
     message: "Institute table created successfully",

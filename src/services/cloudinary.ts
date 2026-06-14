@@ -20,4 +20,8 @@ const storage = new CloudinaryStorage({
   },
 });
 
-export { cloudinary, storage };
+const uploadLimits = {
+  fileSize: 1024 * 1024 * 5, // 5MB
+};
+
+export { cloudinary, storage, uploadLimits };
