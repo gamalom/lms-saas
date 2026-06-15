@@ -4,7 +4,6 @@ import {
   createCourse,
   deleteCourse,
   getAllCourses,
-  getSingleCourse,
   updateCourse,
 } from "../../controller/institute/course/course.controller";
 
@@ -13,19 +12,7 @@ import isLoggedIn from "../../middlewate/middleware";
 // const upload = multer({ storage: storage });
 
 import multer from "multer";
-import { storage, uploadLimits } from "../../services/cloudinary";
-const upload = multer({
-  storage: storage,
-  limits: uploadLimits,
-  fileFilter: (req, file, cb) => {
-    const allowFileTypes = ["image/jpeg", "image/png", "image/jpg"];
-    if (allowFileTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only images are allowed"));
-    }
-  },
-});
+import { upload } from "../../services/multerUpload";
 
 const router = express.Router();
 router
@@ -38,9 +25,7 @@ router
 router
   .route("/course/:courseId")
   .delete(isLoggedIn, asyncErrorHandler(deleteCourse));
-router
-  .route("/course/:courseId")
-  .get(isLoggedIn, asyncErrorHandler(getSingleCourse));
+
 router.route("/course").get(isLoggedIn, asyncErrorHandler(getAllCourses));
 router
   .route("/course/:courseId")

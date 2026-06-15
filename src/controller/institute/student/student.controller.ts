@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { QueryTypes } from "sequelize";
 import sequelize from "../../../Database/connection";
 import User from "../../../Database/models/model.user";
 
@@ -46,6 +47,7 @@ const createStudent = async (req: IExtendedRequest, res: Response) => {
         enrollmentDate,
         studentImage,
       ],
+      type: QueryTypes.INSERT,
     },
   );
   return res.status(200).json({
@@ -63,9 +65,10 @@ const deleteStudent = async (req: IExtendedRequest, res: Response) => {
     });
   }
   const student = await sequelize.query(
-    `DELETE FROM student_${instituteNumber} WHERE id = ?`,
+    `SELECT * FROM student_${instituteNumber} WHERE id = ?`,
     {
       replacements: [studentId],
+      type: QueryTypes.SELECT,
     },
   );
   if (!student) {
@@ -73,6 +76,10 @@ const deleteStudent = async (req: IExtendedRequest, res: Response) => {
       message: "Student not found",
     });
   }
+  await sequelize.query(`DELETE FROM student_${instituteNumber} WHERE id = ?`, {
+    replacements: [studentId],
+    type: QueryTypes.DELETE,
+  });
   return res.status(200).json({
     message: "Student deleted successfully",
   });
@@ -87,6 +94,7 @@ const getAllStudents = async (req: IExtendedRequest, res: Response) => {
   }
   const students = await sequelize.query(
     `SELECT * FROM student_${instituteNumber}`,
+    { type: QueryTypes.SELECT },
   );
   return res.status(200).json({
     message: "Students fetched successfully",
@@ -106,6 +114,7 @@ const getSingleStudent = async (req: IExtendedRequest, res: Response) => {
     `SELECT * FROM student_${instituteNumber} WHERE id = ?`,
     {
       replacements: [studentId],
+      type: QueryTypes.SELECT,
     },
   );
   if (!student) {
@@ -149,6 +158,7 @@ const updateStudent = async (req: IExtendedRequest, res: Response) => {
         studentImage,
         studentId,
       ],
+      type: QueryTypes.UPDATE,
     },
   );
   if (!student) {

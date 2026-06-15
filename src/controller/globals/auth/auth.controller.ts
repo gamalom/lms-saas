@@ -10,6 +10,7 @@ import User from "../../../Database/models/model.user";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
+import generateToken from "../../../services/generate.token";
 config();
 
 const registerUser = async (req: Request, res: Response) => {
@@ -56,9 +57,7 @@ const loginUser = async (req: Request, res: Response) => {
     });
   }
 
-  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, {
-    expiresIn: "30d",
-  });
+  const token = generateToken({ id: user.id as string });
 
   return res.status(200).json({
     message: "login successful",
