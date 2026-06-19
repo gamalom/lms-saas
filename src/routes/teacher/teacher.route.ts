@@ -4,6 +4,6 @@ import asyncErrorHandler from "../../services/async.error.handling";
 
 const router = express.Router();
 
-router.route("/").post(asyncErrorHandler(teacherLogin));
+router.route("/teacher").post(asyncErrorHandler(teacherLogin));
 
 export default router;
