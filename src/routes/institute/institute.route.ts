@@ -13,7 +13,7 @@ import asyncErrorHandler from "../../services/async.error.handling";
 const router = express.Router();
 
 router
-  .route("/institute")
+  .route("/")
   .post(
     isLoggedIn,
     asyncErrorHandler(createInstitute),
