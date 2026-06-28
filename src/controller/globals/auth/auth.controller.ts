@@ -64,8 +64,27 @@ const loginUser = async (req: Request, res: Response) => {
     data: {
       token,
       username: user.username,
+      role: user.role,
+      instituteId: user.instituteId ?? null,
     },
   });
 };
 
-export { registerUser, loginUser };
+const getCurrentUser = async (req: Request, res: Response) => {
+  const user = (req as Request & { user?: User }).user;
+
+  if (!user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  return res.status(200).json({
+    message: "User fetched successfully",
+    data: {
+      username: user.username,
+      role: user.role,
+      instituteId: user.instituteId ?? null,
+    },
+  });
+};
+
+export { registerUser, loginUser, getCurrentUser };

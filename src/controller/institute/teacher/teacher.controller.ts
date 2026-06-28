@@ -75,7 +75,7 @@ const createTeacher = async (req: IExtendedRequest, res: Response) => {
   console.log(teacherId[0].id, "teacherId");
 
   await sequelize.query(
-    `UPDATE course_${instituteNumber} SET teacherId = ? WHERE id = ?`,
+    `UPDATE course_${instituteNumber} SET teacherId = ? WHERE courseId = ?`,
     {
       replacements: [teacherId[0].id, courseId],
       type: QueryTypes.UPDATE,
@@ -134,7 +134,9 @@ const getAllTeachers = async (req: IExtendedRequest, res: Response) => {
     });
   }
   const teachers = await sequelize.query(
-    `SELECT * FROM teacher_${instituteNumber}`,
+    `SELECT t.*, c.courseId, c.courseName
+     FROM teacher_${instituteNumber} t
+     LEFT JOIN course_${instituteNumber} c ON c.teacherId = t.id`,
     {
       type: QueryTypes.SELECT,
     },
@@ -154,8 +156,9 @@ const updateTeacher = async (req: IExtendedRequest, res: Response) => {
     teacherExpertise,
     joiningDate,
     salary,
+    courseId,
   } = req.body;
-  const teacherImage = req.file?.filename ?? req.body.teacherImage;
+  const teacherImage = req.file?.path ?? req.body.teacherImage;
   const instituteNumber = req.user?.instituteId;
   if (!instituteNumber) {
     return res.status(400).json({
@@ -192,6 +195,37 @@ const updateTeacher = async (req: IExtendedRequest, res: Response) => {
       type: QueryTypes.UPDATE,
     },
   );
+
+  if (courseId) {
+    const course = await sequelize.query(
+      `SELECT courseId FROM course_${instituteNumber} WHERE courseId = ?`,
+      {
+        replacements: [courseId],
+        type: QueryTypes.SELECT,
+      },
+    );
+    if (!course.length) {
+      return res.status(404).json({
+        message: "Course not found",
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE course_${instituteNumber} SET teacherId = NULL WHERE teacherId = ?`,
+      {
+        replacements: [teacherId],
+        type: QueryTypes.UPDATE,
+      },
+    );
+
+    await sequelize.query(
+      `UPDATE course_${instituteNumber} SET teacherId = ? WHERE courseId = ?`,
+      {
+        replacements: [teacherId, courseId],
+        type: QueryTypes.UPDATE,
+      },
+    );
+  }
 
   return res.status(200).json({
     message: "Teacher updated successfully",

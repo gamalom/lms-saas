@@ -139,7 +139,7 @@ const updateCourse = async (req: IExtendedRequest, res: Response) => {
     courseDescription,
     categoryId,
   } = req.body;
-  const courseThumbnail = req.file?.filename ?? req.body.courseThumbnail;
+  const courseThumbnail = req.file?.path ?? req.body.courseThumbnail;
   const instituteNumber = req.user?.instituteId;
   if (!instituteNumber) {
     return res.status(400).json({
